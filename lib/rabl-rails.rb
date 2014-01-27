@@ -45,7 +45,9 @@ module RablRails
   def self.configure
     yield self
 
-    ActionController::Base.responder = Responder if self.use_custom_responder
+    if defined?(ActionController::Base) && self.use_custom_responder
+      ActionController::Base.responder = Responder
+    end
   end
 
   def self.json_engine=(name)
@@ -74,7 +76,17 @@ module RablRails
   end
 
   def self.cache_templates?
-    ActionController::Base.perform_caching && @@cache_templates
+    self.rails_performs_caching? && @@cache_templates
+  end
+
+  if defined?(ActionController::Base)
+    def self.rails_performs_caching?
+      ActionController::Base.perform_caching
+    end
+  else
+    def self.rails_performs_caching?
+      true
+    end
   end
 
   def self.load_default_engines!
