@@ -162,9 +162,15 @@ module RablRails
       # evaluating 'node' properties.
       #
       def setup_render_context
-        @_context.instance_variable_get(:@_assigns).each_pair { |k, v|
-          instance_variable_set("@#{k}", v) unless k.to_s.start_with?('_')
-        }
+        if @_context.instance_variable_defined?(:@_assigns)
+          @_context.instance_variable_get(:@_assigns).each_pair { |k, v|
+            instance_variable_set("@#{k}", v) unless k.to_s.start_with?('_')
+          }
+        else
+          @_context.instance_variables.each {|ivar|
+            instance_variable_set(ivar, @_context.instance_variable_get(ivar)) unless ivar.to_s[0,2] == '@_'
+          }
+        end
       end
     end
   end
