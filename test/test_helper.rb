@@ -1,6 +1,9 @@
 ENV["RAILS_ENV"] = "test"
 $:.unshift File.expand_path('../../lib', __FILE__)
 
+require 'coveralls'
+Coveralls.wear!
+
 require 'rspec/mocks'
 require 'minitest/unit'
 MiniTest::Unit.autorun

@@ -18,6 +18,7 @@ gem 'railties', rails
 
 group :development, :test do
   gem 'actionpack', rails
+  gem 'coveralls', require: false
 end
 
 gem 'plist'

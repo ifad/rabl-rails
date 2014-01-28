@@ -8,3 +8,5 @@ rdoc
 pkg
 Gemfile.lock
 
+## Coveralls
+coverage
