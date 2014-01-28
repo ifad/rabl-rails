@@ -20,6 +20,7 @@ group :test do
   gem 'minitest', '~> 5.8'
   gem 'actionpack', rails
   gem 'actionview', rails
+  gem 'coveralls', require: false
 end
 
 gem 'plist'

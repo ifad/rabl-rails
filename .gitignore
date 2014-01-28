@@ -10,3 +10,6 @@ Gemfile.lock
 
 .ruby-version
 .byebug_history
+
+## Coveralls
+coverage
