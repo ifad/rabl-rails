@@ -93,6 +93,7 @@ RablRails.configure do |config|
   # config.include_json_root = true
   # config.json_engine = :oj
   # config.xml_engine = 'LibXML'
+  # config.xml_options = { :dasherize => true, :skip_types => false }
   # config.use_custom_responder = false
   # config.default_responder_template = 'show'
   # config.enable_jsonp_callbacks = false
@@ -278,7 +279,7 @@ end
 There are cases when you want to render object outside Rails view context. For instance to render objects in the console or to create message queue payloads. For these situations, you can use `RablRails.render` as show below:
 
 ```ruby
-Rabl.render(object, template, :view_path => 'app/views', :format => :json) #=> "{...}"
+RablRails.render(object, template, :view_path => 'app/views', :format => :json) #=> "{...}"
 ```
 
 You can find more informations about how to use this method in the [wiki](http://github.com/ccocchi/rabl-rails/wiki/Render-object-directly)

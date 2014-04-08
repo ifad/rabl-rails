@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 0.3.4
+  * Add `xml_options` option to root_level (brettallred)
+
+  * Format can be omitted in template filename
+
+      RablRails.allow_empty_format_in_template = true
+      RablRails.render(user, 'show') # => app/view/user.rabl
+
+  * Rails 4 support
+  * Update travis configuration and remove warning in tests (petergoldstein)
+
 ## 0.3.3
   * Add response caching
 

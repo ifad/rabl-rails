@@ -29,17 +29,6 @@ class RenderTest < ActiveSupport::TestCase
     assert_equal %q({"user":{"id":1,"name":"Marty"}}), RablRails.render(@user, 'show', view_path: @tmp_path)
   end
 
-  test "handles legacy .FORMAT.rabl templates" do
-    File.open(@tmp_path + "show.json.rabl", "w") do |f|
-      f.puts %q{
-        object :@user
-        attributes :id, :name
-      }
-    end
-    ActiveSupport::Deprecation.should_receive(:warn).with(/rename #@tmp_path\/show\.json\.rabl as show\.rabl/)
-    assert_equal %q({"user":{"id":1,"name":"Marty"}}), RablRails.render(@user, 'show', view_path: @tmp_path)
-  end
-
   test "raise error if template is not found" do
     assert_raises(RablRails::Renderer::TemplateNotFound) { RablRails.render(@user, 'not_found') }
   end
@@ -84,6 +73,7 @@ class RenderTest < ActiveSupport::TestCase
     assert_equal %q({"user":{"id":1,"name":"Marty"}}), RablRails.render(@user, 'show', view_path: @tmp_path, format: 'JSON')
   end
 
+
   test "render XML" do
     File.open(@tmp_path + "show.rabl", "w") do |f|
       f.puts %q{
@@ -93,6 +83,22 @@ class RenderTest < ActiveSupport::TestCase
     end
     assert_equal "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<user>\n  <id type=\"integer\">1</id>\n  <name>Marty</name>\n</user>\n",
       RablRails.render(@user, 'show', view_path: @tmp_path, format: 'XML')
+  end
+
+  test "format can be omitted if option is set" do
+    begin
+      RablRails.allow_empty_format_in_template = true
+      File.open(@tmp_path + "show.rabl", "w") do |f|
+        f.puts %q{
+          object :@user
+          attributes :id, :name
+        }
+      end
+
+      assert_equal %q({"user":{"id":1,"name":"Marty"}}), RablRails.render(@user, 'show', view_path: @tmp_path)
+    ensure
+      RablRails.allow_empty_format_in_template = false
+    end
   end
 
 end

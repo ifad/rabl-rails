@@ -15,7 +15,7 @@ module RablRails
 
       def initialize(view_path, format)
         @view_path = view_path || RablRails::Renderer.view_path
-        @format = format.to_s.downcase
+        @extension = format ? ".#{format.to_s.downcase}.rabl" : ".rabl"
       end
 
       #
@@ -24,29 +24,8 @@ module RablRails
       # path is used
       #
       def find_template(name, opt, partial = false)
-        path = _find_template([name, :rabl].join('.'))
-        path = find_legacy_template(name) unless path
-
-        T.new(File.read(path)) if path
-      end
-
-      private
-
-      # Find legacy .json.rabl templates and prints a deprecation
-      # warning asking the user to rename them.
-      def find_legacy_template(name)
-        _find_template([name, @format, :rabl].join('.')).tap do |path|
-          if path
-            ActiveSupport::Deprecation.warn(
-              ".#@format.rabl templates are deprecated. " \
-              "Please rename #@view_path/#{name}.#@format.rabl as #{name}.rabl")
-          end
-        end
-      end
-
-      def _find_template(name)
-        path = File.join(@view_path, name)
-        return path if File.exists?(path)
+        path = File.join(@view_path, [name, 'rabl'].join('.'))
+        T.new(File.read(path)) if File.exists?(path)
       end
     end
 
@@ -59,7 +38,7 @@ module RablRails
 
       def initialize(path, options)
         @virtual_path = path
-        @format = options.delete(:format) || 'json'
+        @format = options.delete(:format) || (RablRails.allow_empty_format_in_template ? nil : 'json')
         @_assigns = {}
         @options = options
 
