@@ -2,6 +2,7 @@ require 'rails/railtie'
 
 require 'active_support'
 require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/module/attribute_accessors'
 
 require 'rabl-rails/version'
 require 'rabl-rails/template'
