@@ -23,7 +23,7 @@ module RablRails
       @plist_engine       = defined?(::Plist) ? ::Plist::Emit : nil
       @include_plist_root = false
 
-      @cache_templates    = ActionController::Base.perform_caching
+      @cache_templates    = defined?(ActionController) ? ActionController::Base.perform_caching : true
 
       @use_custom_responder       = false
       @responder_default_template = 'show'
