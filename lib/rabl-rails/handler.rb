@@ -1,9 +1,8 @@
+require 'active_support/core_ext/class/attribute'
+
 module RablRails
   module Handlers
     class Rabl
-      cattr_accessor :default_format
-      self.default_format = 'application/json'
-
       def self.call(template)
         %{
           RablRails::Library.instance.

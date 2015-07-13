@@ -1,4 +1,4 @@
-require 'rabl-rails/renderers/base'
+require 'rabl-rails/renderers/hash'
 require 'rabl-rails/renderers/json'
 require 'rabl-rails/renderers/xml'
 require 'rabl-rails/renderers/plist'
@@ -6,16 +6,18 @@ require 'rabl-rails/renderers/plist'
 module RablRails
   module Renderer
     class TemplateNotFound < StandardError; end
-
-    mattr_reader :view_path
-    @@view_path = 'app/views'
+    class PartialError < StandardError; end
 
     class LookupContext
       T = Struct.new(:source)
 
       def initialize(view_path, format)
-        @view_path = view_path || RablRails::Renderer.view_path
-        @extension = format ? ".#{format.to_s.downcase}.rabl" : ".rabl"
+        @view_path = view_path || 'app/views'
+        @format = format.downcase
+      end
+
+      def rendered_format
+        @format.to_sym
       end
 
       #
@@ -24,8 +26,14 @@ module RablRails
       # path is used
       #
       def find_template(name, opt, partial = false)
-        path = File.join(@view_path, [name, 'rabl'].join('.'))
-        T.new(File.read(path)) if File.exists?(path)
+        paths = Dir["#@view_path/#{name}{.#@format,}.rabl"]
+        file_path = paths.find { |path| File.exists?(path) }
+
+        if file_path
+          T.new(File.read(file_path))
+        else
+          raise TemplateNotFound
+        end
       end
     end
 
@@ -33,12 +41,12 @@ module RablRails
     # Context class to emulate normal Rails view
     # context
     #
-    class Context
+    class ViewContext
       attr_reader :format
 
       def initialize(path, options)
         @virtual_path = path
-        @format = options.delete(:format) || (RablRails.allow_empty_format_in_template ? nil : 'json')
+        @format = options.delete(:format) || :json
         @_assigns = {}
         @options = options
 
@@ -80,10 +88,8 @@ module RablRails
     def render(object, template, options = {})
       object = options[:locals].delete(:object) if !object && options[:locals]
 
-      c = Context.new(template, options)
+      c = ViewContext.new(template, options)
       t = c.lookup_context.find_template(template, [], false)
-
-      raise TemplateNotFound unless t
 
       Library.instance.get_rendered_template(t.source, c, resource: object)
     end
