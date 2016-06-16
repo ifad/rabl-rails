@@ -24,6 +24,13 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       assert_equal({ id: 1 }, visitor_result)
     end
 
+    it 'renders attributes with a condition' do
+      n = RablRails::Nodes::Attribute.new(id: :id)
+      n.condition = lambda { |o| false }
+      @nodes << n
+      assert_equal({}, visitor_result)
+    end
+
     it 'renders array of nodes' do
       @nodes = [
         RablRails::Nodes::Attribute.new(id: :id),
@@ -153,7 +160,7 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       assert_raises(RablRails::Renderer::PartialError) { visitor_result }
     end
 
-    it 'renders partial defined in code node' do
+    it 'renders partial defined in node' do
       template = RablRails::CompiledTemplate.new
       template.add_node(RablRails::Nodes::Attribute.new(name: :name))
       proc = ->(u) { partial('users/base', object: u) }
@@ -164,6 +171,22 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       @nodes << RablRails::Nodes::Code.new(:user, proc)
       RablRails::Library.stub :instance, library do
         assert_equal({ user: { name: 'Marty' } }, visitor_result)
+      end
+
+      library.verify
+    end
+
+    it 'allows uses of locals variables with partials' do
+      template = RablRails::CompiledTemplate.new
+      template.add_node(RablRails::Nodes::Code.new(:hide_comments, ->(u) { locals[:hide_comments] }, ->(u) { locals.key?(:hide_comments) }))
+      proc = ->(u) { partial('users/locals', object: u, locals: { hide_comments: true }) }
+
+      library = MiniTest::Mock.new
+      library.expect :compile_template_from_path, template, ['users/locals', @context]
+
+      @nodes << RablRails::Nodes::Code.new(:user, proc)
+      RablRails::Library.stub :instance, library do
+        assert_equal({ user: { hide_comments: true } }, visitor_result)
       end
 
       library.verify
