@@ -46,8 +46,8 @@ module RablRails
     end
 
     # XXX: experimental
-    def render(object_or_collection, path, lookup_context: nil)
-      RablRails::Inline.render(object_or_collection, path, lookup_context: lookup_context)
+    def render(*args)
+      RablRails::Inline.render(*args)
     end
   end
 end
