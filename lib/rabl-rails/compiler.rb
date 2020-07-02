@@ -62,22 +62,15 @@ module RablRails
     # Creates a child node to be included in the output.
     # name_or data can be an object or collection or a method to call on the data. It
     # accepts :root and :partial options.
-    # Notes that partial and blocks are not compatible
+    # Note that partial and blocks are not compatible
     # Example:
     #   child(:@posts, :root => :posts) { attribute :id }
     #   child(:posts, :partial => 'posts/base')
     #
     def child(name_or_data, options = {})
-      data, name = extract_data_and_name(name_or_data)
-      name = options[:root] if options.has_key? :root
-
-      if options.key?(:partial)
-        template = Library.instance.compile_template_from_path(options[:partial], @view)
-        template.data = data
-      elsif block_given?
-        template = sub_compile(data) { yield }
-      end
-
+      data, name  = extract_data_and_name(name_or_data)
+      name        = options[:root] if options.has_key? :root
+      template    = partial_or_block(data, options) { yield }
       @template.add_node Nodes::Child.new(name, template)
     end
 
@@ -86,10 +79,8 @@ module RablRails
     # Example:
     #   glue(:@user) { attribute :name }
     #
-    def glue(data)
-      return unless block_given?
-
-      template = sub_compile(data) { yield }
+    def glue(data, options = {})
+      template = partial_or_block(data, options) { yield }
       @template.add_node Nodes::Glue.new(template)
     end
 
@@ -108,23 +99,55 @@ module RablRails
     alias_method :code, :node
 
     #
+    # Creates a constant node in the json output.
+    # Example:
+    #   const(:locale, 'fr_FR')
+    #
+    def const(name, value)
+      @template.add_node Nodes::Const.new(name, value)
+    end
+
+    #
+    # Create a node `name` by looking the current resource being rendered in the
+    # `object` hash using, by default, the resource's id.
+    # Example:
+    #   lookup(:favorite, :@user_favorites, cast: true)
+    #
+    def lookup(name, object, field: :id, cast: false)
+      @template.add_node Nodes::Lookup.new(name, object, field, cast)
+    end
+
+    #
     # Merge arbitrary data into json output. Given block should
     # return a hash.
     # Example:
     #   merge { |item| partial("specific/#{item.to_s}", object: item) }
     #
-    def merge
+    def merge(opts = {})
       return unless block_given?
-      node(nil) { yield }
+      node(nil, opts) { yield }
     end
 
     #
     # Extends an existing rabl template
     # Example:
     #   extends 'users/base'
+    #   extends ->(item) { "v1/#{item.class}/_core" }
+    #   extends 'posts/base', locals: { hide_comments: true }
     #
-    def extends(path)
-      @template.extends Library.instance.compile_template_from_path(path, @view)
+    def extends(path_or_lambda, options = nil)
+      if path_or_lambda.is_a?(Proc)
+        @template.add_node Nodes::Polymorphic.new(path_or_lambda)
+        return
+      end
+
+      other = Library.instance.compile_template_from_path(path_or_lambda, @view)
+
+      if options && options.is_a?(Hash)
+        @template.add_node Nodes::Extend.new(other.nodes, options[:locals])
+      else
+        @template.extends(other)
+      end
     end
 
     #
@@ -138,12 +161,23 @@ module RablRails
       return unless block_given?
       @template.add_node Nodes::Condition.new(proc, sub_compile(nil, true) { yield })
     end
+    alias_method :_if, :condition
 
     def cache(&block)
       @template.cache_key = block_given? ? block : nil
     end
 
     protected
+
+    def partial_or_block(data, options)
+      if options.key?(:partial)
+        template = Library.instance.compile_template_from_path(options[:partial], @view)
+        template.data = data
+        template
+      elsif block_given?
+        sub_compile(data) { yield }
+      end
+    end
 
     #
     # Extract data root_name and root name

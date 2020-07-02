@@ -1,6 +1,6 @@
 require 'helper'
 
-class TestHashVisitor < MINITEST_TEST_CLASS
+class TestHashVisitor < Minitest::Test
   describe 'hash visitor' do
     def visitor_result
       visitor = Visitors::ToHash.new(@context)
@@ -45,12 +45,12 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       before do
         @template = RablRails::CompiledTemplate.new
         @template.add_node(RablRails::Nodes::Attribute.new(city: :city))
-        @nodes << RablRails::Nodes::Child.new(:address, @template)
         @address = Address.new('Paris')
       end
 
       it 'renders with resource association as data source' do
         @template.data = :address
+        @nodes << RablRails::Nodes::Child.new(:address, @template)
         def @resource.address; end
         @resource.stub :address, @address do
           assert_equal({ address: { city: 'Paris' } }, visitor_result)
@@ -59,12 +59,14 @@ class TestHashVisitor < MINITEST_TEST_CLASS
 
       it 'renders with arbitrary data source' do
         @template.data = :@address
+        @nodes = [RablRails::Nodes::Child.new(:address, @template)]
         @context.assigns['address'] = @address
         assert_equal({ address: { city: 'Paris' } }, visitor_result)
       end
 
       it 'renders with local method as data source' do
         @template.data = :address
+        @nodes << RablRails::Nodes::Child.new(:address, @template)
         def @context.address; end
         @context.stub :address, @address do
           assert_equal({ address: { city: 'Paris' } }, visitor_result)
@@ -73,6 +75,7 @@ class TestHashVisitor < MINITEST_TEST_CLASS
 
       it 'renders with a collection as data source' do
         @template.data = :address
+        @nodes << RablRails::Nodes::Child.new(:address, @template)
         def @context.address; end
         @context.stub :address, [@address, @address] do
           assert_equal({ address: [
@@ -84,6 +87,7 @@ class TestHashVisitor < MINITEST_TEST_CLASS
 
       it 'renders if the source is nil' do
         @template.data = :address
+        @nodes << RablRails::Nodes::Child.new(:address, @template)
         def @resource.address; end
         @resource.stub :address, nil do
           assert_equal({ address: nil }, visitor_result)
@@ -132,6 +136,25 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       end
     end
 
+    it 'renders a const node' do
+      @nodes << RablRails::Nodes::Const.new(:locale, 'fr_FR')
+      assert_equal({ locale: 'fr_FR' }, visitor_result)
+    end
+
+    it 'renders a positive lookup node' do
+      @nodes << RablRails::Nodes::Lookup.new(:favorite, :@user_favorites, :id, true)
+      @context.assigns['user_favorites'] = { 1 => true }
+
+      assert_equal({ favorite: true }, visitor_result)
+    end
+
+    it 'renders a negative lookup node' do
+      @nodes << RablRails::Nodes::Lookup.new(:favorite, :@user_favorites, :id, false)
+      @context.assigns['user_favorites'] = { 2 => true }
+
+      assert_equal({ favorite: nil }, visitor_result)
+    end
+
     describe 'with a condition node' do
       before do
         @ns = [RablRails::Nodes::Attribute.new(name: :name)]
@@ -157,7 +180,7 @@ class TestHashVisitor < MINITEST_TEST_CLASS
     it 'raises an exception when trying to merge a non hash object' do
       proc = ->(c) { c.name }
       @nodes << RablRails::Nodes::Code.new(nil, proc)
-      assert_raises(RablRails::Renderer::PartialError) { visitor_result }
+      assert_raises(RablRails::PartialError) { visitor_result }
     end
 
     it 'renders partial defined in node' do
@@ -171,6 +194,20 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       @nodes << RablRails::Nodes::Code.new(:user, proc)
       RablRails::Library.stub :instance, library do
         assert_equal({ user: { name: 'Marty' } }, visitor_result)
+      end
+
+      library.verify
+    end
+
+    it 'renders partial defined in node' do
+      template = RablRails::CompiledTemplate.new
+      template.add_node(RablRails::Nodes::Attribute.new(name: :name))
+      library = MiniTest::Mock.new
+      library.expect :compile_template_from_path, template, ['users/base', @context]
+
+      @nodes << RablRails::Nodes::Polymorphic.new(->(_) { 'users/base' })
+      RablRails::Library.stub :instance, library do
+        assert_equal({ name: 'Marty' }, visitor_result)
       end
 
       library.verify
@@ -192,6 +229,17 @@ class TestHashVisitor < MINITEST_TEST_CLASS
       library.verify
     end
 
+    it 'renders extend with locals' do
+      n = RablRails::Nodes::Attribute.new(id: :id)
+      n.condition = lambda { |_| locals[:display_id] }
+
+      @nodes << RablRails::Nodes::Extend.new(n, display_id: true)
+      assert_equal({ id: 1 }, visitor_result)
+
+      @nodes.first.locals[:display_id] = false
+      assert_equal({}, visitor_result)
+    end
+
     it 'renders partial with empty target' do
       proc = ->(u) { partial('users/base', object: []) }
       @nodes << RablRails::Nodes::Code.new(:users, proc)
@@ -201,7 +249,7 @@ class TestHashVisitor < MINITEST_TEST_CLASS
     it 'raises an exception when calling a partial without a target' do
       proc = ->(u) { partial('users/base') }
       @nodes << RablRails::Nodes::Code.new(:user, proc)
-      assert_raises(RablRails::Renderer::PartialError) { visitor_result }
+      assert_raises(RablRails::PartialError) { visitor_result }
     end
 
     describe 'when hash options are set' do

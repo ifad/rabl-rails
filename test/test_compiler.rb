@@ -2,8 +2,14 @@ require 'helper'
 require 'pathname'
 require 'tmpdir'
 
-class TestCompiler < MINITEST_TEST_CLASS
+class TestCompiler < Minitest::Test
   @@tmp_path = Pathname.new(Dir.mktmpdir)
+
+  File.open(@@tmp_path + 'user.rabl', 'w') do |f|
+    f.puts %q{
+      attributes :id
+    }
+  end
 
   describe 'compiler' do
     def extract_attributes(nodes)
@@ -159,11 +165,7 @@ class TestCompiler < MINITEST_TEST_CLASS
     end
 
     it "compiles child with inline partial notation" do
-      File.open(@@tmp_path + 'user.rabl', 'w') do |f|
-        f.puts %q{
-          attributes :id
-        }
-      end
+
 
       t = @compiler.compile_source(%{child(:user, :partial => 'user') })
       child_node = t.nodes.first
@@ -205,14 +207,48 @@ class TestCompiler < MINITEST_TEST_CLASS
       assert_equal(:foo, code_node.name)
     end
 
+    it "compiles glue with a partial" do
+      t = @compiler.compile_source(%{
+        glue(:@user, partial: 'user')
+      })
+
+      glue_node = t.nodes.first
+      assert_equal(1, glue_node.nodes.size)
+      assert_equal([{ :id => :id }], extract_attributes(glue_node.nodes))
+    end
+
+    it "compiles constant node" do
+      t = @compiler.compile_source(%{
+        const(:locale, 'fr_FR')
+      })
+
+      const_node = t.nodes.first
+      assert_equal :locale, const_node.name
+      assert_equal 'fr_FR', const_node.value
+    end
+
+    it "compiles lookup node" do
+      t = @compiler.compile_source(%{
+        lookup(:favorite, :@user_favorites, cast: true)
+      })
+
+      lookup_node = t.nodes.first
+      assert_equal :favorite, lookup_node.name
+      assert_equal :@user_favorites, lookup_node.data
+      assert_equal :id, lookup_node.field
+      assert lookup_node.cast_to_boolean?
+    end
+
     it "extends other template" do
-      File.open(@@tmp_path + 'user.rabl', 'w') do |f|
-        f.puts %q{
-          attributes :id
-        }
-      end
       t = @compiler.compile_source(%{ extends 'user' })
       assert_equal([{ :id => :id }], extract_attributes(t.nodes))
+    end
+
+    it "extends with a lambda" do
+      t = @compiler.compile_source(%{ extends -> { 'user' } })
+      node = t.nodes.first
+      assert_instance_of(RablRails::Nodes::Polymorphic, node)
+      assert_equal('user', node.template_lambda.call)
     end
 
     it "compiles extend without overwriting nodes previously defined" do
@@ -229,15 +265,19 @@ class TestCompiler < MINITEST_TEST_CLASS
     end
 
     it "extends template that has been compiled previously by ActionView" do
-      File.open(@@tmp_path + 'user.rabl', 'w') do |f|
-        f.puts %q{
-          attributes :id
-        }
-      end
       t = @view.lookup_context.find_template('user')
       t.send(:compile!, @view)
       t = @compiler.compile_source(%{ extends 'user' })
       assert_equal([{ :id => :id }], extract_attributes(t.nodes))
+    end
+
+    it "compiles extends with locals" do
+      t    = @compiler.compile_source(%{ extends 'user', locals: { display_credit_card: false } })
+      node = t.nodes.first
+
+      assert_instance_of RablRails::Nodes::Extend, node
+      assert_equal([{ :id => :id }], extract_attributes(node.nodes))
+      assert_equal({ display_credit_card: false }, node.locals)
     end
 
     it "compiles node" do
@@ -262,11 +302,17 @@ class TestCompiler < MINITEST_TEST_CLASS
       assert_nil node.name
     end
 
-    it "compiles merge like a node but with a reserved keyword as name" do
+    it "compiles merge like a node" do
       t = @compiler.compile_source(%{ merge do |m| m.foo end })
       node = t.nodes.first
       assert_instance_of RablRails::Nodes::Code, node
       assert_nil node.name
+    end
+
+    it "compiles merge with options" do
+      t = @compiler.compile_source(%{ merge(->(m) { true }) do |m| m.foo end })
+      node = t.nodes.first
+      refute_nil node.condition
     end
 
     it "compiles condition" do

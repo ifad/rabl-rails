@@ -1,6 +1,6 @@
 require 'helper'
 
-class TestLibrary < MINITEST_TEST_CLASS
+class TestLibrary < Minitest::Test
   RablRails::Library.send(:attr_reader, :cached_templates)
 
   describe 'library' do
@@ -62,11 +62,22 @@ class TestLibrary < MINITEST_TEST_CLASS
 
       it 'compiles source without caching it if options is not set' do
         @context.virtual_path = 'users/base'
-        template = with_configuration :cache_templates, false do
+        with_configuration :cache_templates, false do
           @library.compile_template_from_source("attribute :id", @context)
         end
 
         assert_empty @library.cached_templates
+      end
+
+      it 'caches multiple templates in one compilation' do
+        @context.virtual_path = 'users/show'
+        with_configuration :cache_templates, true do
+          @library.stub :fetch_source, 'attributes :id' do
+            @library.compile_template_from_source("child(:account, partial: 'users/_account')", @context)
+          end
+        end
+
+        assert_equal 2, @library.cached_templates.size
       end
     end
   end

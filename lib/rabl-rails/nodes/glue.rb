@@ -1,24 +1,16 @@
 module RablRails
   module Nodes
     class Glue
-      include Node
-
-      attr_reader :template
+      attr_reader :nodes, :data
 
       def initialize(template)
-        @template = template
-      end
-
-      def data
-        @template.data
-      end
-
-      def nodes
-        @template.nodes
+        @nodes  = template.nodes
+        @data   = template.data
+        @is_var = @data.to_s.start_with?('@')
       end
 
       def instance_variable_data?
-        @instance_variable_data ||= data.to_s.start_with?('@')
+        @is_var
       end
     end
   end

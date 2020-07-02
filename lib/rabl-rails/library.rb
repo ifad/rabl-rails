@@ -1,6 +1,5 @@
 require 'singleton'
 require 'monitor'
-require 'thread_safe'
 
 module RablRails
   class Library
@@ -16,12 +15,12 @@ module RablRails
     }.freeze
 
     def initialize
-      @cached_templates = ThreadSafe::Cache.new
-      @mutex = Monitor.new
+      @cached_templates = {}
+      @monitor = Monitor.new
     end
 
     def reset_cache!
-      @cached_templates = ThreadSafe::Cache.new
+      @cached_templates = {}
     end
 
     def get_rendered_template(source, view, locals = nil)
@@ -52,7 +51,7 @@ module RablRails
     private
 
     def synchronized_compile(path, source, view)
-      @cached_templates[path] || @mutex.synchronize do
+      @cached_templates[path] || @monitor.synchronize do
         # Any thread holding this lock will be compiling the template needed
         # by the threads waiting. So re-check the template presence to avoid
         # re-compilation

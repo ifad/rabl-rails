@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 0.5.5
+  * Add `lookup` node
+
+## 0.5.4
+  * Relax concurrent-ruby version dependency (javierjulio)
+
+## 0.5.3
+  * Allow `extends` to accept lambdas
+
+## 0.5.2
+  * Add `const` node
+
+## 0.5.1
+  * Fix bug when trying to compile partials with caching enabled
+
+## 0.5.0
+  * Add requirement ruby >= 2.2
+  * Drop support for Rails < 4.2
+  * Replace `thread_safe` with `concurrent_ruby`
+  * Remove custom responder
+  * Remove rendering outside of Rails
+  * Improve Rails 5 compatibility
+
 ## 0.4.3
   * Fix custom responder compatibility with responders 2.1 (itkin)
   * Fix bug when template was already loaded by ActionView and causing a nil

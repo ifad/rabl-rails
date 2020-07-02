@@ -20,7 +20,6 @@ module RablRails
             visitor.instance_variable_get(template.data)
           end
         end
-        collection_or_resource ||= locals[:resource] if locals
 
         render_with_cache(template.cache_key, collection_or_resource) do
           output_hash = if collection?(collection_or_resource)
