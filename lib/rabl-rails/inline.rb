@@ -8,9 +8,9 @@ module RablRails
       end
     end
 
-    def self.render(object_or_collection, path, lookup_context: nil)
+    def self.render(object_or_collection, path, lookup_context: nil, view_path: nil)
       if !lookup_context
-        view_paths      = ActionController::Base.view_paths
+        view_paths      = view_path || ActionController::Base.view_paths
         lookup_context  = ActionView::LookupContext.new(view_paths)
       end
 
@@ -20,7 +20,7 @@ module RablRails
         view
       )
 
-      RablRails::Renderers::Hash.inline_render(
+      RablRails::Renderers::JSON.inline_render(
         compiled_template,
         object_or_collection,
         ViewContext.new
